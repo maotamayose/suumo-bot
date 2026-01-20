@@ -1,0 +1,40 @@
+name: SUUMO Check
+
+on:
+  schedule:
+    # 12時間に1回実行 (0時と12時 UTC -> 日本時間だと 9:00 と 21:00 頃)
+    - cron: '0 */12 * * *'
+  # 手動実行ボタンも残しておきます
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: コードを取得
+        uses: actions/checkout@v4
+
+      - name: Node.jsの準備
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: ライブラリをインストール
+        run: npm ci
+
+      - name: SUUMOボットを実行
+        env:
+          LINE_ACCESS_TOKEN: ${{ secrets.LINE_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+        run: npx ts-node index.ts
+
+      - name: 履歴ファイル(sent_list.txt)を保存
+        run: |
+          git config user.name "suumo-bot"
+          git config user.email "bot@example.com"
+          git add sent_list.txt
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update history" && git push)
